@@ -13,6 +13,12 @@ typedef struct {
   LV2_Worker_Schedule* schedule;
 } test_plugin;
 
+typedef struct {
+  int type;
+  char str[256];
+  int i;
+} worker_msg;
+
 
 static int work_id = 0;
 
@@ -57,17 +63,17 @@ static void connect_port(LV2_Handle instance, uint32_t port, void* data) {
 static LV2_Worker_Status work(LV2_Handle instance, LV2_Worker_Respond_Function respond,
     LV2_Worker_Respond_Handle handle, uint32_t size, const void* data) {
 
-  int* i = (int*) data;
+  worker_msg* msg = (worker_msg*) data;
   //int t = rand() % 3;
   int t = 0;
-  fprintf(stderr, "worker %i called! sleeping %i seconds..\n", *i, t);
+  fprintf(stderr, "worker %i called! sleeping %i seconds..\n", msg->i, t);
   sleep(t);
-  respond(handle, sizeof(int), i); 
+  respond(handle, sizeof(worker_msg), msg); 
   return LV2_WORKER_SUCCESS;
 }
 static LV2_Worker_Status work_response(LV2_Handle instance, uint32_t size, const void* data) {
-  int* i = (int*) data;
-  fprintf(stderr, "response %i called!\n", *i);
+  worker_msg* msg = (worker_msg*) data;
+  fprintf(stderr, "response %i called!\n", msg->i);
   return LV2_WORKER_SUCCESS;
 }
 
@@ -75,8 +81,10 @@ static void run(LV2_Handle instance, uint32_t n_samples) {
   test_plugin* plugin = (test_plugin*) instance;
   if (plugin->first_run) {
     int i;
+    worker_msg msg;
     for (i = 0; i < 10; ++i) {
-      plugin->schedule->schedule_work(plugin->schedule->handle, sizeof(int), &work_id);
+      msg.i = work_id;
+      plugin->schedule->schedule_work(plugin->schedule->handle, sizeof(worker_msg), &msg);
       fprintf(stderr, "worker %i scheduled!\n", work_id);
       ++work_id;
     }
